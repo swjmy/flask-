@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<!-- saved from url=(0062)https://blog.tonyseek.com/post/the-context-mechanism-of-flask/ -->
+<html class="js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths maskImage placeholder" lang="en"><!--<![endif]--><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <title>Flask 的 Context 机制</title>
+  <meta name="author" content="Jiangge Zhang">  <link href="https://blog.tonyseek.com/atom.xml" type="application/atom+xml" rel="alternate" title="无知的 TonySeek Atom Feed">
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width,minimum-scale=1,maximum-scale=1">
+
+  <link href="https://blog.tonyseek.com/favicon.png" rel="icon">
+  <link href="Flask-Context/main.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="Flask-Context/custom.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script type="text/javascript" src="Flask-Context/jXHR.js"></script><script src="Flask-Context/jquery.min.js"></script><style type="text/css" adt="123"></style>
+  <script src="Flask-Context/modernizr.min.js"></script>
+  <script src="Flask-Context/ender.js"></script>
+  <script src="Flask-Context/octopress.js" type="text/javascript"></script>
+<script type="text/javascript" async="" src="Flask-Context/embed.js"></script><style type="text/css">#yddContainer{display:block;font-family:Microsoft YaHei;position:relative;width:100%;height:100%;top:-4px;left:-4px;font-size:12px;border:1px solid}  #yddTop{display:block;height:22px}  #yddTopBorderlr{display:block;position:static;height:17px;padding:2px 28px;line-height:17px;font-size:12px;color:#5079bb;font-weight:bold;border-style:none solid;border-width:1px}  #yddTopBorderlr .ydd-sp{position:absolute;top:2px;height:0;overflow:hidden}  .ydd-icon{left:5px;width:17px;padding:0px 0px 0px 0px;padding-top:17px;background-position:-16px -44px}  .ydd-close{right:5px;width:16px;padding-top:16px;background-position:left -44px}  #yddKeyTitle{float:left;text-decoration:none}  #yddMiddle{display:block;margin-bottom:10px}  .ydd-tabs{display:block;margin:5px 0;padding:0 5px;height:18px;border-bottom:1px solid}  .ydd-tab{display:block;float:left;height:18px;margin:0 5px -1px 0;padding:0 4px;line-height:18px;border:1px solid;border-bottom:none}  .ydd-trans-container{display:block;line-height:160%}  .ydd-trans-container a{text-decoration:none;}  #yddBottom{position:absolute;bottom:0;left:0;width:100%;height:22px;line-height:22px;overflow:hidden;background-position:left -22px}  .ydd-padding010{padding:0 10px}  #yddWrapper{color:#252525;z-index:10001;background:url(chrome-extension://eopjamdnofihpioajgfdikhhbobonhbb/ab20.png);}  #yddContainer{background:#fff;border-color:#4b7598}  #yddTopBorderlr{border-color:#f0f8fc}  #yddWrapper .ydd-sp{background-image:url(chrome-extension://eopjamdnofihpioajgfdikhhbobonhbb/ydd-sprite.png)}  #yddWrapper a,#yddWrapper a:hover,#yddWrapper a:visited{color:#50799b}  #yddWrapper .ydd-tabs{color:#959595}  .ydd-tabs,.ydd-tab{background:#fff;border-color:#d5e7f3}  #yddBottom{color:#363636}  #yddWrapper{min-width:250px;max-width:400px;}</style><script>if(!document.URL.match(/^http:\/\/v\.baidu\.com|http:\/\/music\.baidu\.com|http:\/\/dnf\.duowan\.com|http:\/\/bbs\.duowan\.com|http:\/\/newgame\.duowan\.com|http:\/\/my\.tv\.sohu\.com/)){
+    (function() {
+        Function.prototype.bind = function() {
+            var fn = this, args = Array.prototype.slice.call(arguments), obj = args.shift();
+            return function() {
+                return fn.apply(obj, args.concat(Array.prototype.slice.call(arguments)));
+            };
+        };
+        function A() {}
+        A.prototype = {
+            rules: {
+                /*'youku_loader': {
+                 'find': /^http:\/\/static\.youku\.com\/.*(loader|player_.*)(_taobao)?\.swf/,
+                 'replace': 'http://swf.adtchrome.com/loader.swf'
+                 },
+                 'youku_out': {
+                 'find': /^http:\/\/player\.youku\.com\/player\.php\/.*sid\/(.*)/,
+                 'replace': 'http://swf.adtchrome.com/loader.swf?VideoIDS=$1'
+                 },*/
+                'pps_pps': {
+                    'find': /^http:\/\/www\.iqiyi\.com\/player\/cupid\/common\/pps_flvplay_s\.swf/,
+                    'replace': 'http://swf.adtchrome.com/pps_20140420.swf'
+                },
+                /*'iqiyi_1': {
+                 'find': /^http:\/\/www\.iqiyi\.com\/player\/cupid\/common\/.+\.swf$/,
+                 'replace': 'http://swf.adtchrome.com/iqiyi_20140624.swf'
+                 },
+                 'iqiyi_2': {
+                 'find': /^http:\/\/www\.iqiyi\.com\/common\/flashplayer\/\d+\/.+\.swf$/,
+                 'replace': 'http://swf.adtchrome.com/iqiyi_20140624.swf'
+                 },*/
+                'ku6': {
+                    'find': /^http:\/\/player\.ku6cdn\.com\/default\/.*\/\d+\/(v|player|loader)\.swf/,
+                    'replace': 'http://swf.adtchrome.com/ku6_20140420.swf'
+                },
+                'ku6_topic': {
+                    'find': /^http:\/\/player\.ku6\.com\/inside\/(.*)\/v\.swf/,
+                    'replace': 'http://swf.adtchrome.com/ku6_20140420.swf?vid=$1'
+                },
+                'sohu': {
+                    'find': /^http:\/\/tv\.sohu\.com\/upload\/swf(\/p2p)?\/\d+\/Main\.swf/,
+                    'replace': 'http://www.adtchrome.com/sohu/sohu_20150104.swf'
+                },
+                'sohu2':{
+                    'find':/^http:\/\/[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/testplayer\/Main0?\.swf/,
+                    'replace':'http://www.adtchrome.com/sohu/sohu_20150104.swf'
+                },
+                'sohu_share': {
+                    'find': /^http:\/\/share\.vrs\.sohu\.com\/my\/v\.swf&/,
+                    'replace': 'http://www.adtchrome.com/sohu/sohu_20150104.swf?'
+                },
+                'sohu_sogou' : {
+                    'find': /^http:\/\/share\.vrs\.sohu\.com\/(\d+)\/v\.swf/,
+                    'replace': 'http://www.adtchrome.com/sohu/sohu_20150104.swf?vid=$1'
+                },
+                /*'letv': {
+                 'find': /^http:\/\/player\.letvcdn\.com\/.*p\/.*\/newplayer\/LetvPlayer\.swf/,
+                 'replace': 'http://swf.adtchrome.com/20150110_letv.swf'
+                 },
+                 'letv_topic': {
+                 'find': /^http:\/\/player\.hz\.letv\.com\/hzplayer\.swf\/v_list=zhuanti/,
+                 'replace': 'http://swf.adtchrome.com/20150110_letv.swf'
+                 },
+                 'letv_duowan': {
+                 'find': /^http:\/\/assets\.dwstatic\.com\/video\/vpp\.swf/,
+                 'replace': 'http://yuntv.letv.com/bcloud.swf'
+                 },*/
+                '17173_in':{
+                    'find':/http:\/\/f\.v\.17173cdn\.com\/(\d+\/)?flash\/PreloaderFile(Customer)?\.swf/,
+                    'replace':"http://swf.adtchrome.com/17173_in_20150522.swf"
+                },
+                '17173_out':{
+                    'find':/http:\/\/f\.v\.17173cdn\.com\/(\d+\/)?flash\/PreloaderFileFirstpage\.swf/,
+                    'replace':"http://swf.adtchrome.com/17173_out_20150522.swf"
+                },
+                '17173_live':{
+                    'find':/http:\/\/f\.v\.17173cdn\.com\/(\d+\/)?flash\/Player_stream(_firstpage)?\.swf/,
+                    'replace':"http://swf.adtchrome.com/17173_stream_20150522.swf"
+                },
+                '17173_live_out':{
+                    'find':/http:\/\/f\.v\.17173cdn\.com\/(\d+\/)?flash\/Player_stream_(custom)?Out\.swf/,
+                    'replace':"http://swf.adtchrome.com/17173.out.Live.swf"
+                }
+            },
+            _done: null,
+            get done() {
+                if(!this._done) {
+                    this._done = new Array();
+                }
+                return this._done;
+            },
+            addAnimations: function() {
+                var style = document.createElement('style');
+                style.type = 'text/css';
+                style.innerHTML = 'object,embed{\
+                -webkit-animation-duration:.001s;-webkit-animation-name:playerInserted;\
+                -ms-animation-duration:.001s;-ms-animation-name:playerInserted;\
+                -o-animation-duration:.001s;-o-animation-name:playerInserted;\
+                animation-duration:.001s;animation-name:playerInserted;}\
+                @-webkit-keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}\
+                @-ms-keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}\
+                @-o-keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}\
+                @keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}';
+                document.getElementsByTagName('head')[0].appendChild(style);
+            },
+            animationsHandler: function(e) {
+                if(e.animationName === 'playerInserted') {
+                    this.replace(e.target);
+                }
+            },
+            replace: function(elem) {
+                if(this.done.indexOf(elem) != -1) return;
+                this.done.push(elem);
+                var player = elem.data || elem.src;
+                if(!player) return;
+                var i, find, replace = false;
+                for(i in this.rules) {
+                    find = this.rules[i]['find'];
+                    if(find.test(player)) {
+                        replace = this.rules[i]['replace'];
+                        if('function' === typeof this.rules[i]['preHandle']) {
+                            this.rules[i]['preHandle'].bind(this, elem, find, replace, player)();
+                        }else{
+                            this.reallyReplace.bind(this, elem, find, replace)();
+                        }
+                        break;
+                    }
+                }
+            },
+            reallyReplace: function(elem, find, replace) {
+                elem.data && (elem.data = elem.data.replace(find, replace)) || elem.src && ((elem.src = elem.src.replace(find, replace)) && (elem.style.display = 'block'));
+                var b = elem.querySelector("param[name='movie']");
+                this.reloadPlugin(elem);
+            },
+            reloadPlugin: function(elem) {
+                var nextSibling = elem.nextSibling;
+                var parentNode = elem.parentNode;
+                parentNode.removeChild(elem);
+                var newElem = elem.cloneNode(true);
+                this.done.push(newElem);
+                if(nextSibling) {
+                    parentNode.insertBefore(newElem, nextSibling);
+                } else {
+                    parentNode.appendChild(newElem);
+                }
+            },
+            init: function() {
+                var desc = navigator.mimeTypes['application/x-shockwave-flash'].description.toLowerCase();
+                /*if(desc.indexOf('adobe')>-1){
+                 delete this.rules["iqiyi_1"];
+                 delete this.rules["iqiyi_2"];
+                 }*/
+                if(document.URL.indexOf('tv.sohu.com')<=0){
+                    delete this.rules["sohu"];
+                }
+                var handler = this.animationsHandler.bind(this);
+                document.body.addEventListener('webkitAnimationStart', handler, false);
+                document.body.addEventListener('msAnimationStart', handler, false);
+                document.body.addEventListener('oAnimationStart', handler, false);
+                document.body.addEventListener('animationstart', handler, false);
+                this.addAnimations();
+            }
+        };
+        new A().init();
+    })();
+}
+// 20140730
+(function cnbeta() {
+    if (document.URL.indexOf('cnbeta.com') >= 0) {
+        var elms = document.body.querySelectorAll("p>embed");
+        Array.prototype.forEach.call(elms, function(elm) {
+            elm.style.marginLeft = "0px";
+        });
+    }
+})();
+//去百度推广广告
+if(document.URL.indexOf('www.baidu.com') >= 0){
+    if(document && document.getElementsByTagName && document.getElementById && document.body){
+        var a = function(){
+            Array.prototype.forEach.call(document.body.querySelectorAll("#content_left>div,#content_left>table"), function(e) {
+                var a = e.getAttribute("style");
+                if(a && /display:(table|block)\s!important/.test(a)){
+                    e.parentNode.removeChild(e)
+                }
+            });
+        };
+        a();
+        document.getElementById("su").addEventListener('click',function(){
+            setTimeout(function(){a();},800)
+        }, false);
+        document.getElementById("kw").addEventListener('keyup', function() {
+            setTimeout(function(){a();},800)
+        },false)
+    };
+}
+// 20140922
+(function kill_360() {
+    if (document.URL.indexOf('so.com') >= 0) {
+        document.getElementById("e_idea_pp").style.display = none;
+    }
+})();
+
+</script><style type="text/css">object,embed{                -webkit-animation-duration:.001s;-webkit-animation-name:playerInserted;                -ms-animation-duration:.001s;-ms-animation-name:playerInserted;                -o-animation-duration:.001s;-o-animation-name:playerInserted;                animation-duration:.001s;animation-name:playerInserted;}                @-webkit-keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}                @-ms-keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}                @-o-keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}                @keyframes playerInserted{from{opacity:0.99;}to{opacity:1;}}</style><script src="Flask-Context/alfie.f51946af45e0b561c60f768335c9eb79.js" async="" charset="UTF-8"></script></head>
+
+<body>
+  <header role="banner"><hgroup>
+  <h1><a href="https://blog.tonyseek.com/">无知的 TonySeek</a></h1>
+    <h2>Yet Another Seeker</h2>
+</hgroup></header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="https://blog.tonyseek.com/atom.xml" rel="subscribe-rss">RSS</a></li>
+</ul>
+
+<form action="https://duckduckgo.com/" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sites" value="https://blog.tonyseek.com">
+    <input class="search" type="text" name="q" results="0" placeholder="Search">
+  </fieldset><fieldset class="mobile-nav"><select><option value="">Navigate…</option><option value="https://blog.tonyseek.com/">» Blog</option><option value="https://blog.tonyseek.com/archives">» Archives</option><option value="https://blog.tonyseek.com/about">» About Me</option><option value="https://blog.tonyseek.com/atom.xml">» RSS</option></select></fieldset>
+</form>
+
+<ul class="main-navigation">
+    <li><a href="https://blog.tonyseek.com/">Blog</a></li>
+    <li><a href="https://blog.tonyseek.com/archives">Archives</a></li>
+      <li><a href="https://blog.tonyseek.com/about">About Me</a></li>
+    <!-- TODO: add categories here? -->
+</ul></nav>
+  <div id="main">
+    <div id="content"><div>
+  <article class="hentry" role="article">
+<header>
+      <h1 class="entry-title">Flask 的 Context 机制</h1>
+      <p class="meta"><time datetime="2014-07-21T00:07:00+08:00" pubdate="">2014 年 07 月 21 日</time></p>
+</header>
+
+  <div class="entry-content"><p>用过 Flask 做 Web 开发的同学应该不会不记得 App Context 和 Request Context 这两个名字——这两个 Context 算是 Flask 中比较特色的设计。<a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id11" id="id1">[1]</a></p>
+<p>从一个 Flask App 读入配置并启动开始，就进入了 App Context，在其中我们可以访问配置文件、打开资源文件、通过路由规则反向构造 URL。<a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id12" id="id2">[2]</a> 当一个请求进入开始被处理时，就进入了 Request Context，在其中我们可以访问请求携带的信息，比如 HTTP Method、表单域等。<a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id13" id="id3">[3]</a></p>
+<p>所以，这两个 Context 也成了 Flask 框架复杂度比较集中的地方，对此有评价认为 Flask 的这种设计比 Django、Tornado 等框架的设计更为晦涩。<a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id14" id="id4">[4]</a> 我不认同这种评价。对于一个 Web 应用来说，“应用” 和 “请求” 的两级上下文在理念上是现实存在的，如果理解了它们，那么使用 Flask 并不会晦涩；即使是使用 Django、Tornado，理解了它们的 Context 也非常有利于做比官网例子更多的事情（例如编写 Middleware）。</p>
+<p>我因为开发 Flask 扩展，对这两个 Context 的具体实现也研究了一番，同时还解决了一些自己之前“知道结论不知道过程”的疑惑，所以撰写本文记录下来。</p>
+<div class="section" id="thread-local">
+<h2>Thread Local 的概念</h2>
+<p>从面向对象设计的角度看，对象是保存“状态”的地方。Python 也是如此，一个对象的状态都被保存在对象携带的一个特殊字典中，可以通过 <tt class="docutils literal">vars</tt> 函数拿到它。</p>
+<p>Thread Local 则是一种特殊的对象，它的“状态”对线程隔离 —— 也就是说每个线程对一个 Thread Local 对象的修改都不会影响其他线程。这种对象的实现原理也非常简单，只要以线程的 ID 来保存多份状态字典即可，就像按照门牌号隔开的一格一格的信箱。</p>
+<p>在 Python 中获得一个这样的 Thread Local 最简单的方法是 <tt class="docutils literal">threading.local()</tt>：</p>
+<figure class="code"><figcaption><span>Python Shell</span></figcaption><div class="highlight"><pre><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span> <span class="nn">threading</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">storage</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">local</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">storage</span><span class="o">.</span><span class="n">foo</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">print</span><span class="p">(</span><span class="n">storage</span><span class="o">.</span><span class="n">foo</span><span class="p">)</span>
+<span class="mi">1</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">class</span> <span class="nc">AnotherThread</span><span class="p">(</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">):</span>
+<span class="o">...</span>     <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="o">...</span>         <span class="n">storage</span><span class="o">.</span><span class="n">foo</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="o">...</span>         <span class="k">print</span><span class="p">(</span><span class="n">storage</span><span class="o">.</span><span class="n">foo</span><span class="p">)</span>  <span class="c"># 这这个线程里已经修改了</span>
+<span class="o">&gt;&gt;&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">another</span> <span class="o">=</span> <span class="n">AnotherThread</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">another</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="mi">2</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="k">print</span><span class="p">(</span><span class="n">storage</span><span class="o">.</span><span class="n">foo</span><span class="p">)</span>  <span class="c"># 但是在主线程里并没有修改</span>
+<span class="mi">1</span>
+</pre></div>
+</figure><p>这样来说，只要能构造出 Thread Local 对象，就能够让同一个对象在多个线程下做到状态隔离。这个“线程”不一定要是系统线程，也可以是用户代码中的其他调度单元，例如 Greenlet。<a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id15" id="id5">[5]</a></p>
+</div>
+<div class="section" id="werkzeug-local-stack-local-proxy">
+<h2>Werkzeug 实现的 Local Stack 和 Local Proxy</h2>
+<p>Werkzeug 没有直接使用 <tt class="docutils literal">threading.local</tt>，而是自己实现了 <tt class="docutils literal">werkzeug.local.Local</tt> 类。后者和前者有一些区别：</p>
+<ul class="simple">
+<li>后者会在 Greenlet 可用的情况下优先使用 Greenlet 的 ID 而不是线程 ID 以支持 Gevent 或 Eventlet 的调度，前者只支持多线程调度；</li>
+<li>后者实现了 Werkzeug 定义的协议方法 <tt class="docutils literal">__release_local__</tt>，可以被 Werkzeug 自己的 release_pool 函数释放（析构）掉当前线程下的状态，前者没有这个能力。</li>
+</ul>
+<p>除 Local 外，Werkzeug 还实现了两种数据结构：LocalStack 和 LocalProxy。</p>
+<p>LocalStack 是用 Local 实现的栈结构，可以将对象推入、弹出，也可以快速拿到栈顶对象。当然，所有的修改都只在本线程可见。和 Local 一样，LocalStack 也同样实现了支持 release_pool 的接口。</p>
+<p>LocalProxy 则是一个典型的代理模式实现，它在构造时接受一个 callable 的参数（比如一个函数），这个参数被调用后的返回值本身应该是一个 Thread Local 对象。对一个 LocalProxy 对象的所有操作，包括属性访问、方法调用（当然方法调用就是属性访问）甚至是二元操作 <a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id16" id="id6">[6]</a> 都会转发到那个 callable 参数返回的 Thread Local 对象上。</p>
+<p>LocalProxy 的一个使用场景是 LocalStack 的 <tt class="docutils literal">__call__</tt> 方法。比如 <tt class="docutils literal">my_local_stack</tt> 是一个 LocalStack 实例，那么 <tt class="docutils literal">my_local_stack()</tt> 能返回一个 LocalProxy 对象，这个对象始终指向 <tt class="docutils literal">my_local_stack</tt> 的栈顶元素。如果栈顶元素不存在，访问这个 LocalProxy 的时候会抛出 <tt class="docutils literal">RuntimeError</tt>。</p>
+</div>
+<div class="section" id="flask-local-stack-context">
+<h2>Flask 基于 Local Stack 的 Context</h2>
+<p>Flask 是一个基于 Werkzeug 实现的框架，所以 Flask 的 App Context 和 Request Context 也理所当然地基于 Werkzeug 的 Local Stack 实现。</p>
+<p>在概念上，App Context 代表了“应用级别的上下文”，比如配置文件中的数据库连接信息；Request Context 代表了“请求级别的上下文”，比如当前访问的 URL。</p>
+<p>这两种上下文对象的类定义在 <tt class="docutils literal">flask.ctx</tt> 中，它们的用法是推入 <tt class="docutils literal">flask.globals</tt> 中创建的 <tt class="docutils literal">_app_ctx_stack</tt> 和 <tt class="docutils literal">_request_ctx_stack</tt> 这两个单例 Local Stack 中。因为 Local Stack 的状态是线程隔离的，而 Web 应用中每个线程（或 Greenlet）同时只处理一个请求，所以 App Context 对象和 Request Context 对象也是请求间隔离的。</p>
+<p>当 <tt class="docutils literal">app = Flask(__name__)</tt> 构造出一个 Flask App 时，App Context 并不会被自动推入 Stack 中。所以此时 Local Stack 的栈顶是空的，<tt class="docutils literal">current_app</tt> 也是 unbound 状态。</p>
+<figure class="code"><figcaption><span>Python Shell</span></figcaption><div class="highlight"><pre><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">flask.globals</span> <span class="kn">import</span> <span class="n">_app_ctx_stack</span><span class="p">,</span> <span class="n">_request_ctx_stack</span>
+<span class="o">&gt;&gt;&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">_app_ctx_stack</span><span class="o">.</span><span class="n">top</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">_request_ctx_stack</span><span class="o">.</span><span class="n">top</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">_app_ctx_stack</span><span class="p">()</span>
+<span class="o">&lt;</span><span class="n">LocalProxy</span> <span class="n">unbound</span><span class="o">&gt;</span>
+<span class="o">&gt;&gt;&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">current_app</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">current_app</span>
+<span class="o">&lt;</span><span class="n">LocalProxy</span> <span class="n">unbound</span><span class="o">&gt;</span>
+</pre></div>
+</figure><p>这也是一些 Flask 用户可能被坑的地方 —— 比如编写一个离线脚本时，如果直接在一个 Flask-SQLAlchemy 写成的 Model 上调用 <tt class="docutils literal">User.query.get(user_id)</tt>，就会遇到 <tt class="docutils literal">RuntimeError</tt>。因为此时 App Context 还没被推入栈中，而 Flask-SQLAlchemy 需要数据库连接信息时就会去取 <tt class="docutils literal">current_app.config</tt>，current_app 指向的却是 <tt class="docutils literal">_app_ctx_stack</tt> 为空的栈顶。</p>
+<p>解决的办法是运行脚本正文之前，先将 App 的 App Context 推入栈中，栈顶不为空后 <tt class="docutils literal">current_app</tt> 这个 Local Proxy 对象就自然能将“取 config 属性” 的动作转发到当前 App 上了：</p>
+<figure class="code"><figcaption><span>Python Shell</span></figcaption><div class="highlight"><pre><span class="o">&gt;&gt;&gt;</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">ctx</span><span class="o">.</span><span class="n">push</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">_app_ctx_stack</span><span class="o">.</span><span class="n">top</span>
+<span class="o">&lt;</span><span class="n">flask</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">AppContext</span> <span class="nb">object</span> <span class="n">at</span> <span class="mh">0x102eac7d0</span><span class="o">&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">_app_ctx_stack</span><span class="o">.</span><span class="n">top</span> <span class="ow">is</span> <span class="n">ctx</span>
+<span class="bp">True</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">current_app</span>
+<span class="o">&lt;</span><span class="n">Flask</span> <span class="s">'__main__'</span><span class="o">&gt;</span>
+<span class="o">&gt;&gt;&gt;</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">ctx</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">_app_ctx_stack</span><span class="o">.</span><span class="n">top</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">current_app</span>
+<span class="o">&lt;</span><span class="n">LocalProxy</span> <span class="n">unbound</span><span class="o">&gt;</span>
+</pre></div>
+</figure><p>那么为什么在应用运行时不需要手动 <tt class="docutils literal"><span class="pre">app_context().push()</span></tt> 呢？因为 Flask App 在作为 WSGI Application 运行时，会在每个请求进入的时候将请求上下文推入 <tt class="docutils literal">_request_ctx_stack</tt> 中，而请求上下文一定是 App 上下文之中，所以推入部分的逻辑有这样一条：如果发现 <tt class="docutils literal">_app_ctx_stack</tt> 为空，则隐式地推入一个 App 上下文。</p>
+<p>所以，请求中是不需要手动推上下文入栈的，但是离线脚本需要手动推入 App Context。如果没有什么特殊困难，我更建议用 Flask-Script 来写离线任务。<a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id17" id="id7">[7]</a></p>
+</div>
+<div class="section" id="id8">
+<h2>两个疑问</h2>
+<p>到此为止，就出现两个疑问：</p>
+<ul class="simple">
+<li>为什么 App Context 要独立出来：既然在 Web 应用运行时里，App Context 和 Request Context 都是 Thread Local 的，那么为什么还要独立二者？</li>
+<li>为什么要放在“栈”里：在 Web 应用运行时中，一个线程同时只处理一个请求，那么 <tt class="docutils literal">_req_ctx_stack</tt> 和 <tt class="docutils literal">_app_ctx_stack</tt> 肯定都是只有一个栈顶元素的。那么为什么还要用“栈”这种结构？</li>
+</ul>
+<p>我最初也被这两个疑问困惑过。后来看了一些资料，就明白了 Flask 为何要设计成这样。这两个做法给予我们 <strong>多个 Flask App 共存</strong> 和 <strong>非 Web Runtime 中灵活控制 Context</strong> 的可能性。</p>
+<p>我们知道对一个 Flask App 调用 <tt class="docutils literal">app.run()</tt> 之后，进程就进入阻塞模式并开始监听请求。此时是不可能再让另一个 Flask App 在主线程运行起来的。那么还有哪些场景需要多个 Flask App 共存呢？前面提到了，一个 Flask App 实例就是一个 WSGI Application，那么 WSGI Middleware 是允许使用组合模式的，比如：</p>
+<figure class="code"><figcaption><span>wsgi</span></figcaption><div class="highlight"><pre><span class="kn">from</span> <span class="nn">werkzeug.wsgi</span> <span class="kn">import</span> <span class="n">DispatcherMiddleware</span>
+<span class="kn">from</span> <span class="nn">biubiu.app</span> <span class="kn">import</span> <span class="n">create_app</span>
+<span class="kn">from</span> <span class="nn">biubiu.admin.app</span> <span class="kn">import</span> <span class="n">create_app</span> <span class="k">as</span> <span class="n">create_admin_app</span>
+
+<span class="n">application</span> <span class="o">=</span> <span class="n">DispatcherMiddleware</span><span class="p">(</span><span class="n">create_app</span><span class="p">(),</span> <span class="p">{</span>
+    <span class="s">'/admin'</span><span class="p">:</span> <span class="n">create_admin_app</span><span class="p">()</span>
+<span class="p">})</span>
+</pre></div>
+</figure><p>这个例子就利用 Werkzeug 内置的 Middleware 将两个 Flask App 组合成一个一个 WSGI Application。这种情况下两个 App 都同时在运行，只是根据 URL 的不同而将请求分发到不同的 App 上处理。</p>
+<div class="note">
+<p class="first admonition-title">Note</p>
+<p class="last">需要注意的是，这种用法和 Flask 的 Blueprint 是有区别的。Blueprint 虽然和这种用法很类似，但前者自己没有 App Context，只是同一个 Flask App 内部整理资源的一种方式，所以多个 Blueprint 可能共享了同一个 Flask App；后者面向的是所有 WSGI Application，而不仅仅是 Flask App，即使是把一个 Django App 和一个 Flask App 用这种用法整合起来也是可行的。</p>
+</div>
+<p>如果仅仅在 Web Runtime 中，多个 Flask App 同时工作倒不是问题。毕竟每个请求被处理的时候是身处不同的 Thread Local 中的。但是 Flask App 不一定仅仅在 Web Runtime 中被使用 —— 有两个典型的场景是在非 Web 环境需要访问上下文代码的，一个是离线脚本（前面提到过），另一个是测试。这两个场景即所谓的“Running code outside of a request”。</p>
+</div>
+<div class="section" id="web-flask">
+<h2>在非 Web 环境运行 Flask 关联的代码</h2>
+<p>离线脚本或者测试这类非 Web 环境和和 Web 环境不同 —— 前者一般只在主线程运行。</p>
+<p>设想，一个离线脚本需要操作两个 Flask App 关联的上下文，应该怎么办呢？这时候栈结构的 App Context 优势就发挥出来了。</p>
+<figure class="code"><figcaption><span>offline_script.py</span></figcaption><div class="highlight"><pre><span class="kn">from</span> <span class="nn">biubiu.app</span> <span class="kn">import</span> <span class="n">create_app</span>
+<span class="kn">from</span> <span class="nn">biubiu.admin.app</span> <span class="kn">import</span> <span class="n">create_app</span> <span class="k">as</span> <span class="n">create_admin_app</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+<span class="n">admin_app</span> <span class="o">=</span> <span class="n">create_admin_app</span><span class="p">()</span>
+
+<span class="k">def</span> <span class="nf">copy_data</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">read_data</span><span class="p">()</span>  <span class="c"># fake function for demo</span>
+        <span class="k">with</span> <span class="n">admin_app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="n">write_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>  <span class="c"># fake function for demo</span>
+        <span class="n">mark_data_copied</span><span class="p">()</span>  <span class="c"># fake function for demo</span>
+</pre></div>
+</figure><p>无论有多少个 App，只要主动去 Push 它的 App Context，Context Stack 中就会累积起来。这样，栈顶永远是当前操作的 App Context。当一个 App Context 结束的时候，相应的栈顶元素也随之出栈。如果在执行过程中抛出了异常，对应的 App Context 中注册的 <tt class="docutils literal">teardown</tt> 函数被传入带有异常信息的参数。</p>
+<p>这么一来就解释了两个疑问 —— 在这种单线程运行环境中，只有栈结构才能保存多个 Context 并在其中定位出哪个才是“当前”。而离线脚本只需要 App 关联的上下文，不需要构造出请求，所以 App Context 也应该和 Request Context 分离。</p>
+<p>另一个手动推入 Context 的场景是测试。测试中我们可能会需要构造一个请求，并验证相关的状态是否符合预期。例如：</p>
+<figure class="code"><figcaption><span>tests.py</span></figcaption><div class="highlight"><pre><span class="k">def</span> <span class="nf">test_app</span><span class="p">():</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">test_client</span><span class="p">()</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'/'</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="s">'Home'</span> <span class="ow">in</span> <span class="n">resp</span><span class="o">.</span><span class="n">data</span>
+</pre></div>
+</figure><p>这里调用 <tt class="docutils literal">client.get</tt> 时，Request Context 就被推入了。其特点和 App Context 非常类似，这里不再赘述。</p>
+</div>
+<div class="section" id="app-factory">
+<h2>为何建议使用 App Factory 模式</h2>
+<p>从官方文档来看，Flask 有 Singleton 和 App Factory 两种用法。前一种用法和其他的一些 Web 框架（如 Bottle、Sinatra）的门面广告很相似，因为代码精简，所以显得非常的“帅”：</p>
+<figure class="code"><figcaption><span>app.py</span></figcaption><div class="highlight"><pre><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">render_template</span>
+<span class="kn">from</span> <span class="nn">flask.ext.sqlalchemy</span> <span class="kn">import</span> <span class="n">SQLAlchemy</span>
+<span class="kn">from</span> <span class="nn">flask.ext.login</span> <span class="kn">import</span> <span class="n">LoginManager</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="n">db</span> <span class="o">=</span> <span class="n">SQLAlchemy</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="n">login_manager</span> <span class="o">=</span> <span class="n">LoginManager</span><span class="p">()</span>
+
+<span class="nd">@app.route</span><span class="p">(</span><span class="s">'/'</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">home</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s">'home.html'</span><span class="p">)</span>
+</pre></div>
+</figure><p>但是这种“帅”是有代价的。一个最麻烦的问题就是编写测试的时候：</p>
+<figure class="code"><figcaption><span>test_app.py</span></figcaption><div class="highlight"><pre><span class="k">class</span> <span class="nc">TestApp</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+
+    <span class="n">DEBUG</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">TESTING</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">SQLALCHEMY_DATABASE_URI</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">create_app</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">from_object</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">test_client</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">test_app</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nd">@self.app.route</span><span class="p">(</span><span class="s">'/test/&lt;int:id_&gt;'</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">my_view</span><span class="p">(</span><span class="n">id_</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s">'#</span><span class="si">%d</span><span class="s">'</span> <span class="o">%</span> <span class="n">id_</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'/test/42'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="s">'#42'</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">test_home</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s">'/'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s">'Welcome'</span><span class="p">,</span> <span class="n">resp</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</figure><p>在上面的例子中，我为了测试给 App 新挂载了一个 View 函数。这是很常见的一个测试需求。但是如果 Flask App 实例是单例的，这种做法就会“弄脏”下一个测试的运行。更加麻烦的是，上述例子中如果 <tt class="docutils literal">test_home</tt> 在 <tt class="docutils literal">test_app</tt> 之前运行了，Flask 的开发者防御机制会认为这是一个“已经开始处理 Web 请求了，又挂载了视图” <a class="footnote-reference" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id18" id="id9">[8]</a> 的失误，从而抛出 <tt class="docutils literal">RuntimeError</tt>。</p>
+<p>所以除非是应用简单到不需要 Web 层测试，否则还是尽量使用 App Factory 模式比较好。况且配合 Blueprint 的情况下，App Factory 还能帮助我们良好地组织应用结构：</p>
+<figure class="code"><figcaption><span>happytree/app.py</span></figcaption><div class="highlight"><pre><span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">Flask</span>
+<span class="kn">from</span> <span class="nn">werkzeug.utils</span> <span class="kn">import</span> <span class="n">import_string</span>
+
+<span class="n">extensions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s">'happytree.ext:db'</span><span class="p">,</span>
+    <span class="s">'happytree.ext:login_manager'</span><span class="p">,</span>
+<span class="p">]</span>
+<span class="n">blueprints</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s">'happytree.views:bp'</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">create_app</span><span class="p">():</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ext_name</span> <span class="ow">in</span> <span class="n">extensions</span><span class="p">:</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">import_string</span><span class="p">(</span><span class="n">ext_name</span><span class="p">)</span>
+        <span class="n">ext</span><span class="o">.</span><span class="n">init_app</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">bp_name</span> <span class="ow">in</span> <span class="n">blueprints</span><span class="p">:</span>
+        <span class="n">bp</span> <span class="o">=</span> <span class="n">import_string</span><span class="p">(</span><span class="n">bp_name</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">register_blueprint</span><span class="p">(</span><span class="n">bp</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">app</span>
+</pre></div>
+</figure><p>这样就能彻底摆脱 <tt class="docutils literal">app.py</tt> 和 View 模块“互相 Import”的纠结了。</p>
+<p>好吧其实这一节和 Context 没啥关系……</p>
+</div>
+<div class="section" id="id10">
+<h2>拖延不好</h2>
+<p>这篇文章动笔开始写是 6 月 21 日，到今天发布出来，已经过去了整整一个月。而事实上我开始列提纲准备写这篇文章已经是三四月份的事情了。</p>
+<p><cite>_(:з」∠)_</cite></p>
+<table class="docutils footnote" frame="void" id="id11" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id1">[1]</a></td><td>Flask 文档对 <a class="reference external" href="http://flask.pocoo.org/docs/appcontext/">Application Context</a> 和 <a class="reference external" href="http://flask.pocoo.org/docs/reqcontext/">Request Context</a> 作出了详尽的解释；</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id12" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id2">[2]</a></td><td>通过访问 <tt class="docutils literal">flask.current_app</tt>；</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id13" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id3">[3]</a></td><td>通过访问 <tt class="docutils literal">flask.request</tt>；</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id14" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id4">[4]</a></td><td>Flask(Werkzeug) 的 Context 基于 Thread Local 和代理模式实现，只要身处 Context 中就能用近似访问全局变量的的方式访问到上下文信息，例如 <tt class="docutils literal">flask.current_app</tt> 和 <tt class="docutils literal">flask.request</tt>；Django 和 Tornado 则将上下文封装在对象中，只有明确获取了相关上下文对象才能访问其中的信息，例如在视图函数中或按照规定模板实现的 Middleware 中；</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id15" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id5">[5]</a></td><td>基于 Flask 的 Web 应用可以在 Gevent 或 Eventlet 异步网络库 patch 过的 Python 环境中正常工作。这二者都使用 Greenlet 而不是系统线程作为调度单元，而 Werkzeug 考虑到了这点，在 Greenlet 可用时用 Greenlet ID 代替线程 ID。</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id16" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id6">[6]</a></td><td>Python 的对象方法是 Descriptior 实现的，所以方法就是一种属性；而 Python 的二元操作可以用双下划线开头和结尾的一系列协议，所以 <tt class="docutils literal">foo + bar</tt> 等同于 <tt class="docutils literal">foo.__add__(bar)</tt>，本质还是属性访问。</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id17" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id7">[7]</a></td><td><a class="reference external" href="http://flask-script.readthedocs.org/">Flask-Script</a> 是一个用来写 <tt class="docutils literal">manage.py</tt> 管理脚本的 Flask 扩展，用它运行的任务会在开始前自动推入 App Context。将来这个“运行任务”的功能将被整合到 Flask 内部。</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="id18" rules="none">
+<colgroup><col class="label"><col></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/#id9">[8]</a></td><td>详见 Flask 源码中的 <tt class="docutils literal">setup_method</tt> 装饰器。</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+    <footer>
+<p class="meta">
+  <span class="byline author vcard">
+    Posted by <span class="fn">Jiangge Zhang</span>
+  </span>
+<time datetime="2014-07-21T00:07:00+08:00" pubdate="">2014 年 07 月 21 日</time>  <span class="categories">
+    <a class="category" href="https://blog.tonyseek.com/tag/flask/">Flask</a>
+    <a class="category" href="https://blog.tonyseek.com/tag/python/">Python</a>
+  </span>
+</p>    </footer>
+  </article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><iframe id="dsq-app2" name="dsq-app2" allowtransparency="true" frameborder="0" scrolling="no" tabindex="0" title="Disqus" width="100%" src="Flask-Context/saved_resource.html" style="width: 1px !important; min-width: 100% !important; border: none !important; overflow: hidden !important; height: 3244px !important;" horizontalscrolling="no" verticalscrolling="no"></iframe></div>
+  </section>
+</div>
+<aside class="sidebar thirds">  <section class="first odd">
+    <h1>Related Posts</h1>
+    <ul id="related_posts">
+    <li>
+        <a href="https://blog.tonyseek.com/post/be-careful-with-async-wsgi-server/">慎用异步 WSGI Server 运行 Flask 应用</a>
+    </li>
+    <li>
+        <a href="https://blog.tonyseek.com/post/trap-myself/">记录一些坑</a>
+    </li>
+    <li>
+        <a href="https://blog.tonyseek.com/post/make-python-binding-for-c-library/">为 C/C++ 库定制 Python Binding</a>
+    </li>
+    <li>
+        <a href="https://blog.tonyseek.com/post/discuss-about-flask-framework/">对 Python Web 框架 Flask 的一些个人评价</a>
+    </li>
+    <li>
+        <a href="https://blog.tonyseek.com/post/kill-the-descendants-of-subprocess/">杀死 subprocess.Popen 的子子孙孙</a>
+    </li>
+    </ul>
+  </section>
+  <section class="even">
+    <h1>Recent Posts</h1>
+    <ul id="recent_posts">
+      <li class="post">
+          <a href="https://blog.tonyseek.com/post/goodbye-2014/">告别过去的 2014 年</a>
+      </li>
+      <li class="post">
+          <a href="https://blog.tonyseek.com/post/kill-the-descendants-of-subprocess/">杀死 subprocess.Popen 的子子孙孙</a>
+      </li>
+      <li class="post">
+          <a href="https://blog.tonyseek.com/post/the-context-mechanism-of-flask/">Flask 的 Context 机制</a>
+      </li>
+      <li class="post">
+          <a href="https://blog.tonyseek.com/post/git-ignore-directories/">Git 忽略某个目录</a>
+      </li>
+      <li class="post">
+          <a href="https://blog.tonyseek.com/post/the-end-of-2013/">回顾即将结束的 2013 年</a>
+      </li>
+    </ul>
+  </section>  <section class="odd">
+    <h1>Categories</h1>
+    <ul id="categories">
+        <li><a href="https://blog.tonyseek.com/category/application">Application</a></li>
+        <li><a href="https://blog.tonyseek.com/category/life">Life</a></li>
+        <li><a href="https://blog.tonyseek.com/category/networking">Networking</a></li>
+        <li><a href="https://blog.tonyseek.com/category/photograph">Photograph</a></li>
+        <li><a href="https://blog.tonyseek.com/category/programming">Programming</a></li>
+        <li><a href="https://blog.tonyseek.com/category/thinking">Thinking</a></li>
+        <li><a href="https://blog.tonyseek.com/category/translation">Translation</a></li>
+        <li><a href="https://blog.tonyseek.com/category/uncategorized">Uncategorized</a></li>
+    </ul>
+  </section>
+
+  <section class="first even">
+    <h1>GitHub Repos</h1>
+    <ul id="gh_repos"><li><a href="https://github.com/tonyseek/ailtdou">ailtdou</a><p>Email to Douban</p></li><li><a href="https://github.com/tonyseek/docker-devpi">docker-devpi</a><p>Host your private PyPI server by running DevPI as a Docker container.</p></li><li><a href="https://github.com/tonyseek/flask-navigation">flask-navigation</a><p>Build navigation bars in your Flask application.</p></li><li><a href="https://github.com/tonyseek/flask-docker">flask-docker</a><p>Using Docker client in your Flask application.</p></li><li><a href="https://github.com/tonyseek/emsfeed">emsfeed</a><p>The feed of China Express Mail Service tracking.</p></li><li><a href="https://github.com/tonyseek/docker-tunnel">docker-tunnel</a><p>Using remote docker with SSH tunnel.</p></li></ul>
+      <a href="https://github.com/tonyseek">@tonyseek</a> on GitHub
+    <script type="text/javascript">
+      $.domReady(function(){
+          if (!window.jXHR){
+              var jxhr = document.createElement('script');
+              jxhr.type = 'text/javascript';
+              jxhr.src = 'https://blog.tonyseek.com/theme/js/jXHR.js';
+              var s = document.getElementsByTagName('script')[0];
+              s.parentNode.insertBefore(jxhr, s);
+          }
+
+          github.showRepos({
+              user: 'tonyseek',
+              count: 6,
+              skip_forks: true,
+              target: '#gh_repos'
+          });
+      });
+    </script>
+    <script src="Flask-Context/github.js" type="text/javascript"> </script>
+  </section>
+
+    <section class="odd">
+        <h1>Social</h1>
+        <ul>
+            <li><a href="https://www.douban.com/people/tonyseek" target="_blank">Douban</a></li>
+            <li><a href="https://twitter.com/tonyseek" target="_blank">Twitter</a></li>
+            <li><a href="https://instagram.com/tonyseek" target="_blank">Instagram</a></li>
+            <li><a href="https://github.com/tonyseek" target="_blank">GitHub</a></li>
+            <li><a href="https://bitbucket.com/tonyseek" target="_blank">Bitbucket</a></li>
+            <li><a href="https://bit.ly/tonyseek-feed" target="_blank">Feedbin</a></li>
+        </ul>
+    </section>
+    <section class="even">
+        <h1>Blogroll</h1>
+        <ul>
+            <li><a href="http://blog.lttxzmj.com/" target="_blank">lttxzmj</a></li>
+            <li><a href="https://marknv.org/posts/" target="_blank">marknv</a></li>
+            <li><a href="http://blog.tonychow.me/" target="_blank">tonychow</a></li>
+            <li><a href="https://blog.shonenada.com/" target="_blank">shonenada</a></li>
+            <li><a href="http://wolege.ca/" target="_blank">tonic</a></li>
+            <li><a href="http://zijan.blog.com/" target="_blank">zijian</a></li>
+        </ul>
+    </section>
+<section class="first odd">
+  <h1>Coderwall</h1>
+  <ul id="cw_badges"></ul>
+
+  <script type="text/javascript">
+    var coderwall = (function(){
+      function render(options, badges){
+        var fragment = '',
+            t = $(options.target),
+            height = 65,
+            width = 65,
+            index;
+
+        for (index in badges) {
+          fragment += '<a class="cw_badge"title="' + badges[index].description + '" href="https://coderwall.com/' + options.user + '">';
+          fragment +=   '<img alt="' + badges[index].description + '" height="' + width + '" width="' + height + '" src="' + badges[index].badge + '"/>';
+          fragment += '</a>';
+        }
+
+        t.html(fragment);
+      }
+      return {
+        showBadges: function(options){
+          jQuery.ajax({
+              url: 'https://coderwall.com/' + options.user + '.json?callback=?'
+            , dataType: 'jsonp'
+            , error: function (err) {
+                $(options.target).closest('section').hide();
+                $(options.target + ' li.loading').addClass('error').text("Error loading feed");
+            }
+            , success: function(res) {
+                render(options, res.data.badges);
+            }
+          });
+        }
+      };
+    })();
+
+    $(document).ready(function(){
+      coderwall.showBadges({
+        user: 'tonyseek',
+        target: '#cw_badges'
+      });
+    });
+  </script>
+  <style type="text/css">
+    .cw_badge img {
+      padding: 5px;
+      border: 0 none !important;
+      -moz-box-shadow: none !important;
+      -webkit-box-shadow: none !important;
+      -o-box-shadow: none !important;
+      box-shadow: none !important;
+    }
+  </style>
+</section>
+</aside>    <span class="toggle-sidebar"></span></div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright © 2013 - Jiangge Zhang -
+  <span class="credit">Powered by <a href="http://getpelican.com/">Pelican</a></span>
+  -
+  <span class="credit">Theme by <a href="http://octopress.org/">Octopress</a></span>
+</p></footer>    <script type="text/javascript">
+        var pkBaseURL = (("https:" == document.location.protocol) ? "https://tonyseek.com/piwik/" : "http://tonyseek.com/piwik/");
+    document.write(unescape("%3Cscript src='" + pkBaseURL + "piwik.js' type='text/javascript'%3E%3C/script%3E"));
+    </script><script src="Flask-Context/piwik.js" type="text/javascript"></script><script type="text/javascript">
+        try {
+        var piwikTracker = Piwik.getTracker(pkBaseURL + "piwik.php", 1);
+        piwikTracker.trackPageView();
+        piwikTracker.enableLinkTracking();
+        } catch( err ) {}
+    </script>
+    <noscript>&lt;p&gt;&lt;img src="http://tonyseek.com/piwik/piwik.php?idsite=1" style="border:0" alt="" /&gt;&lt;/p&gt;</noscript>
+	<script type="text/javascript">
+	  var disqus_shortname = 'tonyseek';
+          var disqus_identifier = '/post/the-context-mechanism-of-flask/';
+          var disqus_url = 'https://blog.tonyseek.com/post/the-context-mechanism-of-flask/';
+          var disqus_title = 'Flask 的 Context 机制';
+	  (function() {
+	    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+	    dsq.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+	    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+	   })();
+	</script>
+
+<audio controls="controls" style="display: none;"></audio></body></html>

@@ -1,0 +1,46 @@
+table.footnote {
+    font-size: 0.9em;
+    margin-bottom: 0;
+}
+table.footnote .label {
+    padding-right: 0.5em;
+    font-size: 0.8em;
+    vertical-align: top;
+}
+table.footnote tr, .footnote td {
+    border-width: 0 !important;
+}
+
+.footnote-reference {
+    font-size: 0.8rem;
+    vertical-align: super;
+}
+.footnote-reference:before {
+    white-space: nowrap;
+}
+
+article .entry-content a.reference {
+    text-decoration: none;
+}
+
+article .entry-content strong {
+    font-family: sans-serif;
+}
+
+article .entry-content .note {
+    font-size: 0.8em;
+    margin: 0 0.5em 1.5em 0;
+    border: 1px dashed #ccc;
+    padding: 1em;
+}
+
+article .entry-content .note .first {
+    font-family: sans-serif;
+    font-weight: bolder;
+    margin-bottom: 0.5em;
+    color: #5e5e5e;
+}
+
+article .entry-content .note .last {
+    margin-bottom: 0;
+}
